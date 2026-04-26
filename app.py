@@ -5,14 +5,13 @@ from flask_login import LoginManager, login_user, current_user, logout_user, log
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "your_secret_key"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:admin123@127.0.0.1:3306/flask-crud'
 
 login_manager = LoginManager()
 
 db.init_app(app) 
 login_manager.init_app(app)
 
-# view login
 login_manager.login_view = 'login'
 
 @login_manager.user_loader
@@ -51,7 +50,7 @@ def create_user():
     password = data.get("password")
 
     if username and password: 
-        user = User(username=username, password=password)
+        user = User(username=username, password=password, role="user")
         db.session.add(user)
         db.session.commit()
         return jsonify ({"message": "Usuário Cadastrado Com Sucesso!"})
@@ -64,10 +63,14 @@ def create_user():
 def read_user(id_user):
     user = User.query.get(id_user)
 
+    if current_user.role == "user":
+        return jsonify({"message": "Usuário sem permissão permitida!"}), 403
+
     if user: 
         return {
             "username": user.username,
-            "password": user.password
+            "password": user.password,
+            "role": user.role
         }
 
     return jsonify({"message": "usuário não encontrado"}), 404
@@ -81,6 +84,12 @@ def update_user(id_user):
     password = data.get("password")
 
     user = User.query.get(id_user)
+
+    if id_user == current_user.id:
+        return jsonify({"message": "Alteração Não Permitido, altere um usuário diferente do seu!"}), 403
+
+    if current_user.role == "user":
+        return jsonify({"message": "Usuário sem permissão permitida!"}), 403
 
     if user and password:
         user.password = password
@@ -100,13 +109,15 @@ def delete_user(id_user):
     if id_user == current_user.id:
         return jsonify({"message": "Deleção Não Permitido, delete um usuário diferente do seu!"}), 403
 
+    if current_user.role == "user":
+        return jsonify({"message": "Usuário sem permissão permitida!"}), 403
+
     if user :
         db.session.delete(user)
         db.session.commit()
         return jsonify({"message": f"Usuário {user.username} Deletado Com Sucesso!"})
 
     return jsonify({"message": "usuário não encontrado"}), 404
-
 
 
 @app.route("/helloworld", methods=["GET"])
