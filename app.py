@@ -19,6 +19,7 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(user_id)
 
+
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
@@ -35,6 +36,7 @@ def login():
         
     return jsonify({"message": "credenciais invalidas"}), 400
 
+
 @app.route("/logout", methods=["GET"])
 @login_required
 def logout():
@@ -42,9 +44,72 @@ def logout():
     return jsonify({"message": "Logout realizado com sucesso"})
 
 
+@app.route("/user", methods=["POST"])
+def create_user():
+    data = request.json
+    username = data.get("username")
+    password = data.get("password")
+
+    if username and password: 
+        user = User(username=username, password=password)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify ({"message": "Usuário Cadastrado Com Sucesso!"})
+    
+    return jsonify ({"message": "Dados Invalidos"}), 401
+
+
+@app.route("/user/<int:id_user>", methods=["GET"])
+@login_required
+def read_user(id_user):
+    user = User.query.get(id_user)
+
+    if user: 
+        return {
+            "username": user.username,
+            "password": user.password
+        }
+
+    return jsonify({"message": "usuário não encontrado"}), 404
+
+
+@app.route("/user/<int:id_user>", methods=["PUT"])
+@login_required
+def update_user(id_user):
+
+    data = request.json
+    password = data.get("password")
+
+    user = User.query.get(id_user)
+
+    if user and password:
+        user.password = password
+        db.session.commit()
+
+        return jsonify({"message": f"Senha do Usuário {user.username} Alterado Com Sucesso!"})
+
+    return jsonify({"message": "usuário não encontrado"}), 404
+
+
+@app.route("/user/<int:id_user>", methods=["DELETE"])
+@login_required
+def delete_user(id_user):
+
+    user = User.query.get(id_user)
+
+    if id_user == current_user.id:
+        return jsonify({"message": "Deleção Não Permitido, delete um usuário diferente do seu!"}), 403
+
+    if user :
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"message": f"Usuário {user.username} Deletado Com Sucesso!"})
+
+    return jsonify({"message": "usuário não encontrado"}), 404
+
+
 
 @app.route("/helloworld", methods=["GET"])
-@login_required
 def helloworld():
     return "hello world"
 
